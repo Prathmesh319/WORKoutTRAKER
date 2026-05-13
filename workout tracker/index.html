@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Workout Tracker</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+  <div class="app-title">// WORKOUT TRACKER</div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('log', event)">Log</button>
+    <button class="tab" onclick="switchTab('history', event)">History</button>
+    <button class="tab" onclick="switchTab('summary', event)">Summary</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- LOG TAB -->
+  <div id="tab-log" class="section active">
+
+    <div style="margin-top:1rem;">
+
+      <div class="form-grid full">
+        <div>
+          <label>Exercise Name</label>
+          <input type="text" id="ex-name" placeholder="Bench Press">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div>
+          <label>Sets</label>
+          <input type="number" id="ex-sets" placeholder="3">
+        </div>
+
+        <div>
+          <label>Reps</label>
+          <input type="number" id="ex-reps" placeholder="10">
+        </div>
+      </div>
+
+      <div class="form-grid full">
+        <div>
+          <label>Weight (kg)</label>
+          <input type="number" id="ex-weight" placeholder="60">
+        </div>
+      </div>
+
+      <button class="btn" onclick="addExercise()">
+        + Add Exercise
+      </button>
+
+    </div>
+
+    <p class="section-label">Today's Workout</p>
+
+    <div class="ex-list" id="today-list"></div>
+
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="tab-history" class="section">
+    <div id="history-list" style="margin-top:1rem;"></div>
+  </div>
+
+  <!-- SUMMARY TAB -->
+  <div id="tab-summary" class="section">
+
+    <div style="margin-top:1rem;">
+
+      <div id="rest-banner"></div>
+
+      <div class="stat-grid" id="stat-grid"></div>
+
+      <p class="section-label">Personal Bests</p>
+
+      <div id="pb-section"></div>
+
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+
+const today = () => new Date().toISOString().split('T')[0];
+
+function loadData(){
+  return JSON.parse(localStorage.getItem('wt_data') || '{}');
+}
+
+function saveData(data){
+  localStorage.setItem('wt_data', JSON.stringify(data));
+}
+
+function switchTab(tab, event){
+
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.classList.remove('active');
+  });
+
+  document.querySelectorAll('.section').forEach(s=>{
+    s.classList.remove('active');
+  });
+
+  event.target.classList.add('active');
+
+  document.getElementById('tab-' + tab).classList.add('active');
+
+  if(tab === 'history') renderHistory();
+  if(tab === 'summary') renderSummary();
+}
+
+function addExercise(){
+
+  const name = document.getElementById('ex-name').value.trim();
+  const sets = parseInt(document.getElementById('ex-sets').value);
+  const reps = parseInt(document.getElementById('ex-reps').value);
+  const weight = parseFloat(document.getElementById('ex-weight').value);
+
+  if(!name || !sets || !reps || isNaN(weight)){
+    alert('Please fill all fields');
+    return;
+  }
+
+  const data = loadData();
+  const d = today();
+
+  if(!data[d]) data[d] = [];
+
+  data[d].push({
+    id: Date.now(),
+    name,
+    sets,
+    reps,
+    weight
+  });
+
+  saveData(data);
+
+  document.getElementById('ex-name').value = '';
+  document.getElementById('ex-sets').value = '';
+  document.getElementById('ex-reps').value = '';
+  document.getElementById('ex-weight').value = '';
+
+  renderToday();
+}
+
+function deleteExercise(id){
+
+  const data = loadData();
+  const d = today();
+
+  data[d] = data[d].filter(e => e.id !== id);
+
+  saveData(data);
+
+  renderToday();
+}
+
+function renderToday(){
+
+  const data = loadData();
+  const todayData = data[today()] || [];
+
+  const list = document.getElementById('today-list');
+
+  if(todayData.length === 0){
+    list.innerHTML = '<p class="empty">No workouts logged yet.</p>';
+    return;
+  }
+
+  list.innerHTML = todayData.map(e => `
+  
+    <div class="ex-item">
+
+      <div>
+        <div class="ex-name">${e.name}</div>
+
+        <div class="ex-meta">
+          ${e.sets} sets × ${e.reps} reps · ${e.weight} kg
+        </div>
+      </div>
+
+      <div class="ex-right">
+
+        <button class="del-btn" onclick="deleteExercise(${e.id})">
+          ✕
+        </button>
+
+      </div>
+
+    </div>
+
+  `).join('');
+}
+
+function renderHistory(){
+
+  const data = loadData();
+
+  const dates = Object.keys(data).sort((a,b)=>b.localeCompare(a));
+
+  const container = document.getElementById('history-list');
+
+  if(dates.length === 0){
+    container.innerHTML = '<p class="empty">No history found.</p>';
+    return;
+  }
+
+  container.innerHTML = dates.map(d => `
+
+    <div class="day-group">
+
+      <div class="day-header">${d}</div>
+
+      <div class="ex-list">
+
+        ${(data[d] || []).map(e => `
+
+          <div class="ex-item">
+
+            <div>
+              <div class="ex-name">${e.name}</div>
+
+              <div class="ex-meta">
+                ${e.sets} sets × ${e.reps} reps · ${e.weight} kg
+              </div>
+            </div>
+
+          </div>
+
+        `).join('')}
+
+      </div>
+
+    </div>
+
+  `).join('');
+}
+
+function renderSummary(){
+
+  const data = loadData();
+
+  const allDates = Object.keys(data);
+
+  let totalWorkouts = allDates.length;
+  let totalExercises = 0;
+  let totalSets = 0;
+
+  allDates.forEach(d => {
+
+    data[d].forEach(e => {
+
+      totalExercises++;
+
+      totalSets += e.sets;
+
+    });
+
+  });
+
+  document.getElementById('stat-grid').innerHTML = `
+
+    <div class="stat-card">
+      <div class="stat-val">${totalWorkouts}</div>
+      <div class="stat-lbl">Workouts</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-val">${totalExercises}</div>
+      <div class="stat-lbl">Exercises</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-val">${totalSets}</div>
+      <div class="stat-lbl">Sets</div>
+    </div>
+
+  `;
+}
+
+renderToday();
+
+</script>
+
+</body>
+</html>
